@@ -37,6 +37,7 @@ import static io.prestosql.plugin.hive.s3.PrestoS3FileSystem.S3_MULTIPART_MIN_FI
 import static io.prestosql.plugin.hive.s3.PrestoS3FileSystem.S3_MULTIPART_MIN_PART_SIZE;
 import static io.prestosql.plugin.hive.s3.PrestoS3FileSystem.S3_PATH_STYLE_ACCESS;
 import static io.prestosql.plugin.hive.s3.PrestoS3FileSystem.S3_PIN_CLIENT_TO_CURRENT_REGION;
+import static io.prestosql.plugin.hive.s3.PrestoS3FileSystem.S3_POSITIONED_READS;
 import static io.prestosql.plugin.hive.s3.PrestoS3FileSystem.S3_SECRET_KEY;
 import static io.prestosql.plugin.hive.s3.PrestoS3FileSystem.S3_SIGNER_TYPE;
 import static io.prestosql.plugin.hive.s3.PrestoS3FileSystem.S3_SKIP_GLACIER_OBJECTS;
@@ -56,6 +57,7 @@ public class PrestoS3ConfigurationInitializer
     private final String awsSecretKey;
     private final String endpoint;
     private final PrestoS3SignerType signerType;
+    private final boolean positionedReads;
     private final boolean pathStyleAccess;
     private final boolean useInstanceCredentials;
     private final String iamRole;
@@ -87,6 +89,7 @@ public class PrestoS3ConfigurationInitializer
         this.awsSecretKey = config.getS3AwsSecretKey();
         this.endpoint = config.getS3Endpoint();
         this.signerType = config.getS3SignerType();
+        this.positionedReads = config.isS3PositionedReadsEnabled();
         this.pathStyleAccess = config.isS3PathStyleAccess();
         this.useInstanceCredentials = config.isS3UseInstanceCredentials();
         this.iamRole = config.getS3IamRole();
@@ -132,6 +135,7 @@ public class PrestoS3ConfigurationInitializer
         if (signerType != null) {
             config.set(S3_SIGNER_TYPE, signerType.name());
         }
+        config.setBoolean(S3_POSITIONED_READS, positionedReads);
         config.setBoolean(S3_PATH_STYLE_ACCESS, pathStyleAccess);
         config.setBoolean(S3_USE_INSTANCE_CREDENTIALS, useInstanceCredentials);
         if (iamRole != null) {

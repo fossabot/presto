@@ -53,6 +53,7 @@ public class HiveS3Config
     private Duration s3SocketTimeout = new Duration(5, TimeUnit.SECONDS);
     private int s3MaxConnections = 500;
     private File s3StagingDirectory = new File(StandardSystemProperty.JAVA_IO_TMPDIR.value());
+    private boolean s3PositionedReadsEnabled = true;
     private DataSize s3MultipartMinFileSize = new DataSize(16, MEGABYTE);
     private DataSize s3MultipartMinPartSize = new DataSize(5, MEGABYTE);
     private boolean pinS3ClientToCurrentRegion;
@@ -331,6 +332,18 @@ public class HiveS3Config
     public HiveS3Config setS3StagingDirectory(File s3StagingDirectory)
     {
         this.s3StagingDirectory = s3StagingDirectory;
+        return this;
+    }
+
+    public boolean isS3PositionedReadsEnabled()
+    {
+        return s3PositionedReadsEnabled;
+    }
+
+    @Config("hive.s3.positioned-reads.enabled")
+    public HiveS3Config setS3PositionedReadsEnabled(boolean s3PositionedReadsEnabled)
+    {
+        this.s3PositionedReadsEnabled = s3PositionedReadsEnabled;
         return this;
     }
 

@@ -144,6 +144,7 @@ public class PrestoS3FileSystem
     public static final String S3_MAX_CLIENT_RETRIES = "presto.s3.max-client-retries";
     public static final String S3_MAX_ERROR_RETRIES = "presto.s3.max-error-retries";
     public static final String S3_SSL_ENABLED = "presto.s3.ssl.enabled";
+    public static final String S3_POSITIONED_READS = "presto.s3.positioned-reads";
     public static final String S3_PATH_STYLE_ACCESS = "presto.s3.path-style-access";
     public static final String S3_SIGNER_TYPE = "presto.s3.signer-type";
     public static final String S3_ENDPOINT = "presto.s3.endpoint";
@@ -179,6 +180,7 @@ public class PrestoS3FileSystem
     private boolean sseEnabled;
     private PrestoS3SseType sseType;
     private String sseKmsKeyId;
+    private boolean positionedReads;
     private boolean isPathStyleAccess;
     private long multiPartUploadMinFileSize;
     private long multiPartUploadMinPartSize;
@@ -209,6 +211,7 @@ public class PrestoS3FileSystem
         int maxConnections = conf.getInt(S3_MAX_CONNECTIONS, defaults.getS3MaxConnections());
         this.multiPartUploadMinFileSize = conf.getLong(S3_MULTIPART_MIN_FILE_SIZE, defaults.getS3MultipartMinFileSize().toBytes());
         this.multiPartUploadMinPartSize = conf.getLong(S3_MULTIPART_MIN_PART_SIZE, defaults.getS3MultipartMinPartSize().toBytes());
+        this.positionedReads = conf.getBoolean(S3_POSITIONED_READS, defaults.isS3PositionedReadsEnabled());
         this.isPathStyleAccess = conf.getBoolean(S3_PATH_STYLE_ACCESS, defaults.isS3PathStyleAccess());
         this.useInstanceCredentials = conf.getBoolean(S3_USE_INSTANCE_CREDENTIALS, defaults.isS3UseInstanceCredentials());
         this.iamRole = conf.get(S3_IAM_ROLE, defaults.getS3IamRole());
@@ -363,7 +366,7 @@ public class PrestoS3FileSystem
     {
         return new FSDataInputStream(
                 new BufferedFSInputStream(
-                        new PrestoS3InputStream(s3, getBucketName(uri), path, maxAttempts, maxBackoffTime, maxRetryTime),
+                        new PrestoS3InputStream(s3, getBucketName(uri), path, positionedReads, maxAttempts, maxBackoffTime, maxRetryTime),
                         bufferSize));
     }
 
@@ -810,6 +813,7 @@ public class PrestoS3FileSystem
         private final AmazonS3 s3;
         private final String host;
         private final Path path;
+        private final boolean positionedReads;
         private final int maxAttempts;
         private final Duration maxBackoffTime;
         private final Duration maxRetryTime;
@@ -820,12 +824,12 @@ public class PrestoS3FileSystem
         private long streamPosition;
         private long nextReadPosition;
 
-        public PrestoS3InputStream(AmazonS3 s3, String host, Path path, int maxAttempts, Duration maxBackoffTime, Duration maxRetryTime)
+        public PrestoS3InputStream(AmazonS3 s3, String host, Path path, boolean positionedReads, int maxAttempts, Duration maxBackoffTime, Duration maxRetryTime)
         {
             this.s3 = requireNonNull(s3, "s3 is null");
             this.host = requireNonNull(host, "host is null");
             this.path = requireNonNull(path, "path is null");
-
+            this.positionedReads = positionedReads;
             checkArgument(maxAttempts >= 0, "maxAttempts cannot be negative");
             this.maxAttempts = maxAttempts;
             this.maxBackoffTime = requireNonNull(maxBackoffTime, "maxBackoffTime is null");
@@ -843,6 +847,10 @@ public class PrestoS3FileSystem
         public int read(long position, byte[] buffer, int offset, int length)
                 throws IOException
         {
+            if (!positionedReads) {
+                return super.read(position, buffer, offset, length);
+            }
+
             checkClosed();
             if (position < 0) {
                 throw new EOFException(NEGATIVE_SEEK);
